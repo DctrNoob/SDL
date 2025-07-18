@@ -524,7 +524,7 @@ static void SetViewportAndScissor(GPU_RenderData *data)
 
 static SDL_GPUSampler *GetSampler(GPU_RenderData *data, SDL_ScaleMode scale_mode, SDL_TextureAddressMode address_u, SDL_TextureAddressMode address_v)
 {
-    Uint32 key = RENDER_SAMPLER_HASHKEY(scale_mode, address_u, address_v);
+    Uint32 key = RENDER_SAMPLER_HASHKEY(scale_mode, address_u, address_v, 0);
     SDL_assert(key < SDL_arraysize(data->samplers));
     if (!data->samplers[key]) {
         SDL_GPUSamplerCreateInfo sci;

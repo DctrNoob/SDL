@@ -1294,6 +1294,7 @@ typedef struct
     SDL_ScaleMode texture_scale_mode;
     SDL_TextureAddressMode texture_address_mode_u;
     SDL_TextureAddressMode texture_address_mode_v;
+    SDL_TextureBorderColor texture_border_color;
     bool cliprect_dirty;
     bool cliprect_enabled;
     SDL_Rect cliprect;
@@ -1459,9 +1460,9 @@ static bool SetDrawState(SDL_Renderer *renderer, const SDL_RenderCommand *cmd, c
     return true;
 }
 
-static id<MTLSamplerState> GetSampler(SDL3METAL_RenderData *data, SDL_ScaleMode scale_mode, SDL_TextureAddressMode address_u, SDL_TextureAddressMode address_v)
+static id<MTLSamplerState> GetSampler(SDL3METAL_RenderData *data, SDL_ScaleMode scale_mode, SDL_TextureAddressMode address_u, SDL_TextureAddressMode address_v, SDL_TextureBorderColor border_color)
 {
-    NSNumber *key = [NSNumber numberWithInteger:RENDER_SAMPLER_HASHKEY(scale_mode, address_u, address_v)];
+    NSNumber *key = [NSNumber numberWithInteger:RENDER_SAMPLER_HASHKEY(scale_mode, address_u, address_v, border_color)];
     id<MTLSamplerState> mtlsampler = data.mtlsamplers[key];
     if (mtlsampler == nil) {
         MTLSamplerDescriptor *samplerdesc;
@@ -1487,6 +1488,9 @@ static id<MTLSamplerState> GetSampler(SDL3METAL_RenderData *data, SDL_ScaleMode 
         case SDL_TEXTURE_ADDRESS_WRAP:
             samplerdesc.sAddressMode = MTLSamplerAddressModeRepeat;
             break;
+        case SDL_TEXTURE_ADDRESS_BORDER:
+            samplerdesc.sAddressMode = MTLSamplerAddressModeClampToBorderColor;
+            break;
         default:
             SDL_SetError("Unknown texture address mode: %d", address_u);
             return nil;
@@ -1498,10 +1502,40 @@ static id<MTLSamplerState> GetSampler(SDL3METAL_RenderData *data, SDL_ScaleMode 
         case SDL_TEXTURE_ADDRESS_WRAP:
             samplerdesc.tAddressMode = MTLSamplerAddressModeRepeat;
             break;
+        case SDL_TEXTURE_ADDRESS_BORDER:
+            samplerdesc.tAddressMode = MTLSamplerAddressModeClampToEdge;
+#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 120000 || \
+    __IPHONE_OS_VERSION_MAX_ALLOWED >= 140000 || \
+    __TV_OS_VERSION_MAX_ALLOWED >= 160000
+            if (@available(macOS 12.0, iOS 14.0, tvOS 16.0, *)) {
+                samplerdesc.tAddressMode = MTLSamplerAddressModeClampToBorderColor;
+            }
+#endif
+            break;
         default:
             SDL_SetError("Unknown texture address mode: %d", address_v);
             return nil;
         }
+#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 120000 || \
+    __IPHONE_OS_VERSION_MAX_ALLOWED >= 140000 || \
+    __TV_OS_VERSION_MAX_ALLOWED >= 160000
+        if (@available(macOS 12.0, iOS 14.0, tvOS 16.0, *)) {
+            switch (border_color) {
+            case SDL_TEXTURE_BORDER_COLOR_OPAQUE_BLACK:
+                samplerdesc.borderColor = MTLSamplerBorderColorOpaqueBlack;
+                break;
+            case SDL_TEXTURE_BORDER_COLOR_OPAQUE_WHITE:
+                samplerdesc.borderColor = MTLSamplerBorderColorOpaqueWhite;
+                break;
+            case SDL_TEXTURE_BORDER_COLOR_TRANSPARENT_BLACK:
+                samplerdesc.borderColor = MTLSamplerBorderColorTransparentBlack;
+                break;
+            default:
+                SDL_SetError("Unknown texture border color: %d", border_color);
+                return nil;
+            }
+        }
+#endif
         mtlsampler = [data.mtldevice newSamplerStateWithDescriptor:samplerdesc];
         if (mtlsampler == nil) {
             SDL_SetError("Couldn't create sampler");
@@ -1539,8 +1573,9 @@ static bool SetCopyState(SDL_Renderer *renderer, const SDL_RenderCommand *cmd, c
 
     if (cmd->data.draw.texture_scale_mode != statecache->texture_scale_mode ||
         cmd->data.draw.texture_address_mode_u != statecache->texture_address_mode_u ||
-        cmd->data.draw.texture_address_mode_v != statecache->texture_address_mode_v) {
-        id<MTLSamplerState> mtlsampler = GetSampler(data, cmd->data.draw.texture_scale_mode, cmd->data.draw.texture_address_mode_u, cmd->data.draw.texture_address_mode_v);
+        cmd->data.draw.texture_address_mode_v != statecache->texture_address_mode_v ||
+        cmd->data.draw.texture_border_color != statecache->texture_border_color) {
+        id<MTLSamplerState> mtlsampler = GetSampler(data, cmd->data.draw.texture_scale_mode, cmd->data.draw.texture_address_mode_u, cmd->data.draw.texture_address_mode_v, cmd->data.draw.texture_border_color);
         if (mtlsampler == nil) {
             return false;
         }
@@ -1549,6 +1584,7 @@ static bool SetCopyState(SDL_Renderer *renderer, const SDL_RenderCommand *cmd, c
         statecache->texture_scale_mode = cmd->data.draw.texture_scale_mode;
         statecache->texture_address_mode_u = cmd->data.draw.texture_address_mode_u;
         statecache->texture_address_mode_v = cmd->data.draw.texture_address_mode_v;
+        statecache->texture_border_color = cmd->data.draw.texture_border_color;
     }
     return true;
 }
@@ -1573,6 +1609,7 @@ static bool METAL_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd
         statecache.texture_scale_mode = SDL_SCALEMODE_INVALID;
         statecache.texture_address_mode_u = SDL_TEXTURE_ADDRESS_INVALID;
         statecache.texture_address_mode_v = SDL_TEXTURE_ADDRESS_INVALID;
+        statecache.texture_border_color = SDL_TEXTURE_BORDER_COLOR_INVALID;
         statecache.shader_constants_dirty = true;
         statecache.cliprect_dirty = true;
         statecache.viewport_dirty = true;

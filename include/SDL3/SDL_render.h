@@ -101,7 +101,9 @@ typedef enum SDL_TextureAccess
 /**
  * The addressing mode for a texture when used in SDL_RenderGeometry().
  *
- * This affects how texture coordinates are interpreted outside of [0, 1]
+ * This affects how texture coordinates are interpreted outside of [0, 1].
+ * Renderers that do not support SDL_TEXTURE_ADDRESS_BORDER silently fall
+ * back to SDL_TEXTURE_ADDRESS_CLAMP.
  *
  * \since This enum is available since SDL 3.4.0.
  */
@@ -110,8 +112,26 @@ typedef enum SDL_TextureAddressMode
     SDL_TEXTURE_ADDRESS_INVALID = -1,
     SDL_TEXTURE_ADDRESS_AUTO,   /**< Wrapping is enabled if texture coordinates are outside [0, 1], this is the default */
     SDL_TEXTURE_ADDRESS_CLAMP,  /**< Texture coordinates are clamped to the [0, 1] range */
-    SDL_TEXTURE_ADDRESS_WRAP    /**< The texture is repeated (tiled) */
+    SDL_TEXTURE_ADDRESS_WRAP,   /**< The texture is repeated (tiled) */
+    SDL_TEXTURE_ADDRESS_BORDER  /**< Texels for texture coordinates outside the [0, 1] range take on the border color */
 } SDL_TextureAddressMode;
+
+/**
+ * The texture border color for a texture when used in SDL_RenderGeometry()
+ * when the texture address mode is set to SDL_TEXTURE_ADDRESS_BORDER.
+ *
+ * A transparent color should be used in combination with a texture blend mode
+ * that does alpha blending such as SDL_BLENDMODE_BLEND.
+ *
+ * \since This enum is available since SDL 3.4.0.
+ */
+typedef enum SDL_TextureBorderColor
+{
+    SDL_TEXTURE_BORDER_COLOR_INVALID = -1,
+    SDL_TEXTURE_BORDER_COLOR_OPAQUE_BLACK,      /**< Corresponds to float color (0, 0, 0, 1), this is the default */
+    SDL_TEXTURE_BORDER_COLOR_OPAQUE_WHITE,      /**< Corresponds to float color (1, 1, 1, 1) */
+    SDL_TEXTURE_BORDER_COLOR_TRANSPARENT_BLACK  /**< Corresponds to float color (0, 0, 0, 0) */
+} SDL_TextureBorderColor;
 
 /**
  * How the logical size is mapped to the output.
@@ -2431,6 +2451,41 @@ extern SDL_DECLSPEC bool SDLCALL SDL_SetRenderTextureAddressMode(SDL_Renderer *r
  * \sa SDL_SetRenderTextureAddressMode
  */
 extern SDL_DECLSPEC bool SDLCALL SDL_GetRenderTextureAddressMode(SDL_Renderer *renderer, SDL_TextureAddressMode *u_mode, SDL_TextureAddressMode *v_mode);
+
+/**
+ * Set the texture border color used in SDL_RenderGeometry() when the texture
+ * address mode is set to SDL_TEXTURE_ADDRESS_BORDER.
+ *
+ * \param renderer the rendering context.
+ * \param border_color the SDL_TextureBorderColor to use when rendering textures
+ *                     in SDL_RenderGeometry().
+ * \returns true on success or false on failure; call SDL_GetError() for more
+ *          information.
+ *
+ * \since This function is available since SDL 3.4.0.
+ *
+ * \sa SDL_RenderGeometry
+ * \sa SDL_RenderGeometryRaw
+ * \sa SDL_SetRenderTextureAddressMode
+ * \sa SDL_GetRenderTextureBorderColor
+ */
+extern SDL_DECLSPEC bool SDLCALL SDL_SetRenderTextureBorderColor(SDL_Renderer *renderer, SDL_TextureBorderColor border_color);
+
+/**
+ * Get the texture border color used in SDL_RenderGeometry() when the texture
+ * address mode is set to SDL_TEXTURE_ADDRESS_BORDER.
+ *
+ * \param renderer the rendering context.
+ * \param border_color a pointer filled in with the SDL_TextureBorderColor to use
+ *               when rendering textures in SDL_RenderGeometry(), may be NULL.
+ * \returns true on success or false on failure; call SDL_GetError() for more
+ *          information.
+ *
+ * \since This function is available since SDL 3.4.0.
+ *
+ * \sa SDL_SetRenderTextureBorderColor
+ */
+extern SDL_DECLSPEC bool SDLCALL SDL_GetRenderTextureBorderColor(SDL_Renderer *renderer, SDL_TextureBorderColor *border_color);
 
 /**
  * Read pixels from the current rendering target.

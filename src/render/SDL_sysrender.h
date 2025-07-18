@@ -181,6 +181,7 @@ typedef struct SDL_RenderCommand
             SDL_ScaleMode texture_scale_mode;
             SDL_TextureAddressMode texture_address_mode_u;
             SDL_TextureAddressMode texture_address_mode_v;
+            SDL_TextureBorderColor texture_border_color;
             SDL_GPURenderState *gpu_render_state;
         } draw;
         struct
@@ -307,6 +308,7 @@ struct SDL_Renderer
     SDL_BlendMode blendMode; /**< The drawing blend mode */
     SDL_TextureAddressMode texture_address_mode_u;
     SDL_TextureAddressMode texture_address_mode_v;
+    SDL_TextureBorderColor texture_border_color;
     SDL_GPURenderState *gpu_render_state;
 
     SDL_RenderCommand *render_commands;
@@ -368,11 +370,14 @@ extern SDL_RenderDriver GPU_RenderDriver;
 // Clean up any renderers at shutdown
 extern void SDL_QuitRender(void);
 
-#define RENDER_SAMPLER_HASHKEY(scale_mode, address_u, address_v)    \
-    (((scale_mode == SDL_SCALEMODE_NEAREST) << 0) |                 \
-     ((address_u == SDL_TEXTURE_ADDRESS_WRAP) << 1) |               \
-     ((address_v == SDL_TEXTURE_ADDRESS_WRAP) << 2))
-#define RENDER_SAMPLER_COUNT (((1 << 0) | (1 << 1) | (1 << 2)) + 1)
+/* Macros to hash/index sampler combinations. The constants are derived as follows:
+   * The number of sampler-unique scale modes (SDL_ScaleMode): 2 (SDL_SCALEMODE_PIXELART is treated as SDL_SCALEMODE_LINEAR)
+   * The number of sampler-unique texture address modes (SDL_TextureAddressMode) for u: 3
+   * The number of sampler-unique texture address modes (SDL_TextureAddressMode) for v: 3
+   * The number of sampler-unique texture border colors (SDL_TextureBorderColor): 3 */
+#define RENDER_SAMPLER_HASHKEY(scale_mode, address_u, address_v, border_color)  \
+    ((((scale_mode * 3) + address_u) * 3 + address_v) * 3 + border_color)
+#define RENDER_SAMPLER_COUNT (2 * 3 * 3 * 3)
 
 // Add a supported texture format to a renderer
 extern bool SDL_AddSupportedTextureFormat(SDL_Renderer *renderer, SDL_PixelFormat format);
