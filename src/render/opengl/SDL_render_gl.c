@@ -151,6 +151,7 @@ typedef struct
     SDL_ScaleMode texture_scale_mode;
     SDL_TextureAddressMode texture_address_mode_u;
     SDL_TextureAddressMode texture_address_mode_v;
+    SDL_TextureBorderColor texture_border_color;
     GL_FBOList *fbo;
 } GL_TextureData;
 
@@ -541,6 +542,7 @@ static bool GL_CreateTexture(SDL_Renderer *renderer, SDL_Texture *texture, SDL_P
     data->texture_scale_mode = SDL_SCALEMODE_INVALID;
     data->texture_address_mode_u = SDL_TEXTURE_ADDRESS_INVALID;
     data->texture_address_mode_v = SDL_TEXTURE_ADDRESS_INVALID;
+    data->texture_border_color = SDL_TEXTURE_BORDER_COLOR_INVALID;
     renderdata->glEnable(textype);
     renderdata->glBindTexture(textype, data->texture);
 #ifdef SDL_PLATFORM_MACOS
@@ -1108,6 +1110,8 @@ static GLint TranslateAddressMode(SDL_TextureAddressMode addressMode)
         return GL_CLAMP_TO_EDGE;
     case SDL_TEXTURE_ADDRESS_WRAP:
         return GL_REPEAT;
+    case SDL_TEXTURE_ADDRESS_BORDER:
+        return GL_CLAMP_TO_BORDER;
     default:
         SDL_assert(!"Unknown texture address mode");
         return GL_CLAMP_TO_EDGE;
@@ -1118,6 +1122,28 @@ static void SetTextureAddressMode(GL_RenderData *data, GLenum textype, SDL_Textu
 {
     data->glTexParameteri(textype, GL_TEXTURE_WRAP_S, TranslateAddressMode(addressModeU));
     data->glTexParameteri(textype, GL_TEXTURE_WRAP_T, TranslateAddressMode(addressModeV));
+}
+
+static void SetTextureBorderColor(GL_RenderData *data, GLenum textype, SDL_TextureBorderColor borderColor)
+{
+    const GLfloat borderColorOpaqueBlack[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+    const GLfloat borderColorOpaqueWhite[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+    const GLfloat borderColorTransparentBlack[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+
+    switch (borderColor) {
+    case SDL_TEXTURE_BORDER_COLOR_OPAQUE_BLACK:
+        data->glTexParameterfv(textype, GL_TEXTURE_BORDER_COLOR, borderColorOpaqueBlack);
+        break;
+    case SDL_TEXTURE_BORDER_COLOR_OPAQUE_WHITE:
+        data->glTexParameterfv(textype, GL_TEXTURE_BORDER_COLOR, borderColorOpaqueWhite);
+        break;
+    case SDL_TEXTURE_BORDER_COLOR_TRANSPARENT_BLACK:
+        data->glTexParameterfv(textype, GL_TEXTURE_BORDER_COLOR, borderColorTransparentBlack);
+        break;
+    default:
+        SDL_assert(!"Unknown texture border color");
+        break;
+    }
 }
 
 static bool SetCopyState(GL_RenderData *data, const SDL_RenderCommand *cmd)
@@ -1218,6 +1244,11 @@ static bool SetCopyState(GL_RenderData *data, const SDL_RenderCommand *cmd)
 
         texturedata->texture_address_mode_u = cmd->data.draw.texture_address_mode_u;
         texturedata->texture_address_mode_v = cmd->data.draw.texture_address_mode_v;
+    }
+
+    if (cmd->data.draw.texture_border_color != texturedata->texture_border_color) {
+        SetTextureBorderColor(data, textype, cmd->data.draw.texture_border_color);
+        texturedata->texture_border_color = cmd->data.draw.texture_border_color;
     }
 
     return true;
@@ -1406,6 +1437,7 @@ static bool GL_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, v
             SDL_ScaleMode thisscalemode = cmd->data.draw.texture_scale_mode;
             SDL_TextureAddressMode thisaddressmode_u = cmd->data.draw.texture_address_mode_u;
             SDL_TextureAddressMode thisaddressmode_v = cmd->data.draw.texture_address_mode_v;
+            SDL_TextureBorderColor thisbordercolor = cmd->data.draw.texture_border_color;
             const SDL_RenderCommandType thiscmdtype = cmd->command;
             SDL_RenderCommand *finalcmd = cmd;
             SDL_RenderCommand *nextcmd = cmd->next;
@@ -1419,6 +1451,7 @@ static bool GL_RunCommandQueue(SDL_Renderer *renderer, SDL_RenderCommand *cmd, v
                            nextcmd->data.draw.texture_scale_mode != thisscalemode ||
                            nextcmd->data.draw.texture_address_mode_u != thisaddressmode_u ||
                            nextcmd->data.draw.texture_address_mode_v != thisaddressmode_v ||
+                           nextcmd->data.draw.texture_border_color != thisbordercolor ||
                            nextcmd->data.draw.blend != thisblend) {
                     break; // can't go any further on this draw call, different texture/blendmode copy up next.
                 } else {

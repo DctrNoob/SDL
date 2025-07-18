@@ -371,13 +371,13 @@ extern SDL_RenderDriver GPU_RenderDriver;
 extern void SDL_QuitRender(void);
 
 /* Macros to hash/index sampler combinations. The constants are derived as follows:
-   * The number of sampler-unique scale modes (SDL_ScaleMode): 2 (SDL_SCALEMODE_PIXELART is treated as SDL_SCALEMODE_LINEAR)
-   * The number of sampler-unique texture address modes (SDL_TextureAddressMode) for u: 3
-   * The number of sampler-unique texture address modes (SDL_TextureAddressMode) for v: 3
+   * The number of sampler-unique scale modes (SDL_ScaleMode): 3
+   * The number of sampler-unique texture address modes (SDL_TextureAddressMode) for u: 3 (SDL_TEXTURE_ADDRESS_AUTO is resolved to one of the others)
+   * The number of sampler-unique texture address modes (SDL_TextureAddressMode) for v: 3 (SDL_TEXTURE_ADDRESS_AUTO is resolved to one of the others)
    * The number of sampler-unique texture border colors (SDL_TextureBorderColor): 3 */
 #define RENDER_SAMPLER_HASHKEY(scale_mode, address_u, address_v, border_color)  \
     ((((scale_mode * 3) + address_u) * 3 + address_v) * 3 + border_color)
-#define RENDER_SAMPLER_COUNT (2 * 3 * 3 * 3)
+#define RENDER_SAMPLER_COUNT (3 * 3 * 3 * 3)
 
 // Add a supported texture format to a renderer
 extern bool SDL_AddSupportedTextureFormat(SDL_Renderer *renderer, SDL_PixelFormat format);

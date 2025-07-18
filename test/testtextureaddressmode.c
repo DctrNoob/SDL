@@ -60,7 +60,7 @@ Draw(DrawState *s)
     SDL_SetRenderDrawColorFloat(s->renderer, 0.5f, 1.0f, 0.5f, 1.0f);
     SDL_RenderClear(s->renderer);
 
-    SDL_SetTextureBlendMode(s->texture, SDL_BLENDMODE_BLEND);
+    SDL_SetRenderDrawBlendMode(s->renderer, SDL_BLENDMODE_BLEND);
     SDL_SetRenderTextureAddressMode(s->renderer, u_mode, v_mode);
     SDL_SetRenderTextureBorderColor(s->renderer, border_color);
 
@@ -138,6 +138,8 @@ int main(int argc, char *argv[])
 
     /* Initialize test framework */
     state = SDLTest_CommonCreateState(argv, SDL_INIT_VIDEO);
+    state->renderdriver = "vulkan";
+    state->verbose = VERBOSE_RENDER;
     if (!state) {
         return 1;
     }

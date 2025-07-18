@@ -429,8 +429,7 @@ SDL_PROC(void, glTexImage2D,
           const GLvoid *pixels))
 SDL_PROC_UNUSED(void, glTexParameterf,
                 (GLenum target, GLenum pname, GLfloat param))
-SDL_PROC_UNUSED(void, glTexParameterfv,
-                (GLenum target, GLenum pname, const GLfloat *params))
+SDL_PROC(void, glTexParameterfv, (GLenum target, GLenum pname, const GLfloat *params))
 SDL_PROC(void, glTexParameteri, (GLenum target, GLenum pname, GLint param))
 SDL_PROC_UNUSED(void, glTexParameteriv,
                 (GLenum target, GLenum pname, const GLint *params))

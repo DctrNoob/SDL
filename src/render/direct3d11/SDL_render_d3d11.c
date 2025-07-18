@@ -2262,9 +2262,9 @@ static bool D3D11_SetDrawState(SDL_Renderer *renderer, const SDL_RenderCommand *
     return true;
 }
 
-static ID3D11SamplerState *D3D11_GetSamplerState(D3D11_RenderData *data, SDL_ScaleMode scale_mode, SDL_TextureAddressMode address_u, SDL_TextureAddressMode address_v)
+static ID3D11SamplerState *D3D11_GetSamplerState(D3D11_RenderData *data, SDL_ScaleMode scale_mode, SDL_TextureAddressMode address_u, SDL_TextureAddressMode address_v, SDL_TextureBorderColor border_color)
 {
-    Uint32 key = RENDER_SAMPLER_HASHKEY(scale_mode, address_u, address_v);
+    Uint32 key = RENDER_SAMPLER_HASHKEY(scale_mode, address_u, address_v, border_color);
     SDL_assert(key < SDL_arraysize(data->samplers));
     if (!data->samplers[key]) {
         D3D11_SAMPLER_DESC samplerDesc;
@@ -2294,6 +2294,9 @@ static ID3D11SamplerState *D3D11_GetSamplerState(D3D11_RenderData *data, SDL_Sca
         case SDL_TEXTURE_ADDRESS_WRAP:
             samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
             break;
+        case SDL_TEXTURE_ADDRESS_BORDER:
+            samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_BORDER;
+            break;
         default:
             SDL_SetError("Unknown texture address mode: %d", address_u);
             return NULL;
@@ -2305,8 +2308,34 @@ static ID3D11SamplerState *D3D11_GetSamplerState(D3D11_RenderData *data, SDL_Sca
         case SDL_TEXTURE_ADDRESS_WRAP:
             samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
             break;
+        case SDL_TEXTURE_ADDRESS_BORDER:
+            samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_BORDER;
+            break;
         default:
             SDL_SetError("Unknown texture address mode: %d", address_v);
+            return NULL;
+        }
+        switch (border_color) {
+        case SDL_TEXTURE_BORDER_COLOR_OPAQUE_BLACK:
+            samplerDesc.BorderColor[0] = 0.0f;
+            samplerDesc.BorderColor[1] = 0.0f;
+            samplerDesc.BorderColor[2] = 0.0f;
+            samplerDesc.BorderColor[3] = 1.0f;
+            break;
+        case SDL_TEXTURE_BORDER_COLOR_OPAQUE_WHITE:
+            samplerDesc.BorderColor[0] = 1.0f;
+            samplerDesc.BorderColor[1] = 1.0f;
+            samplerDesc.BorderColor[2] = 1.0f;
+            samplerDesc.BorderColor[3] = 1.0f;
+            break;
+        case SDL_TEXTURE_BORDER_COLOR_TRANSPARENT_BLACK:
+            samplerDesc.BorderColor[0] = 0.0f;
+            samplerDesc.BorderColor[1] = 0.0f;
+            samplerDesc.BorderColor[2] = 0.0f;
+            samplerDesc.BorderColor[3] = 0.0f;
+            break;
+        default:
+            SDL_SetError("Unknown texture border color: %d", border_color);
             return NULL;
         }
         HRESULT result = ID3D11Device_CreateSamplerState(data->d3dDevice,
@@ -2334,7 +2363,7 @@ static bool D3D11_SetCopyState(SDL_Renderer *renderer, const SDL_RenderCommand *
 
     D3D11_SetupShaderConstants(renderer, cmd, texture, &constants);
 
-    textureSampler = D3D11_GetSamplerState(rendererData, cmd->data.draw.texture_scale_mode, cmd->data.draw.texture_address_mode_u, cmd->data.draw.texture_address_mode_v);
+    textureSampler = D3D11_GetSamplerState(rendererData, cmd->data.draw.texture_scale_mode, cmd->data.draw.texture_address_mode_u, cmd->data.draw.texture_address_mode_v, cmd->data.draw.texture_border_color);
     if (!textureSampler) {
         return false;
     }

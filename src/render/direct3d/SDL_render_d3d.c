@@ -63,6 +63,7 @@ typedef struct
     SDL_ScaleMode scaleMode[3];
     SDL_TextureAddressMode addressModeU[3];
     SDL_TextureAddressMode addressModeV[3];
+    SDL_TextureBorderColor borderColor[3];
     IDirect3DSurface9 *defaultRenderTarget;
     IDirect3DSurface9 *currentRenderTarget;
     void *d3dxDLL;
@@ -284,6 +285,11 @@ static void D3D_InitRenderState(D3D_RenderData *data)
     }
     for (int i = 0; i < SDL_arraysize(data->addressModeV); ++i) {
         data->addressModeV[i] = SDL_TEXTURE_ADDRESS_INVALID;
+    }
+
+    // Reset out current border color
+    for (int i = 0; i < SDL_arraysize(data->borderColor); ++i) {
+        data->borderColor[i] = SDL_TEXTURE_BORDER_COLOR_INVALID;
     }
 
     // Start the render with beginScene
@@ -948,6 +954,8 @@ static DWORD TranslateAddressMode(SDL_TextureAddressMode addressMode)
         return D3DTADDRESS_CLAMP;
     case SDL_TEXTURE_ADDRESS_WRAP:
         return D3DTADDRESS_WRAP;
+    case SDL_TEXTURE_ADDRESS_BORDER:
+        return D3DTADDRESS_BORDER;
     default:
         SDL_assert(!"Unknown texture address mode");
         return D3DTADDRESS_CLAMP;
@@ -963,6 +971,27 @@ static void UpdateTextureAddressMode(D3D_RenderData *data, SDL_TextureAddressMod
     if (addressModeV != data->addressModeV[index]) {
         IDirect3DDevice9_SetSamplerState(data->device, index, D3DSAMP_ADDRESSV, TranslateAddressMode(addressModeV));
         data->addressModeV[index] = addressModeV;
+    }
+}
+
+static void UpdateTextureBorderColor(D3D_RenderData* data, SDL_TextureBorderColor borderColor, unsigned index)
+{
+    if (borderColor != data->borderColor[index]) {
+        switch (borderColor) {
+        case SDL_TEXTURE_BORDER_COLOR_OPAQUE_BLACK:
+            IDirect3DDevice9_SetSamplerState(data->device, index, D3DSAMP_BORDERCOLOR, D3DCOLOR_RGBA(0, 0, 0, 255));
+            break;
+        case SDL_TEXTURE_BORDER_COLOR_OPAQUE_WHITE:
+            IDirect3DDevice9_SetSamplerState(data->device, index, D3DSAMP_BORDERCOLOR, D3DCOLOR_RGBA(255, 255, 255, 255));
+            break;
+        case SDL_TEXTURE_BORDER_COLOR_TRANSPARENT_BLACK:
+            IDirect3DDevice9_SetSamplerState(data->device, index, D3DSAMP_BORDERCOLOR, D3DCOLOR_RGBA(0, 0, 0, 0));
+            break;
+        default:
+            SDL_assert(!"Unknown texture border color");
+            break;
+        }
+        data->borderColor[index] = borderColor;
     }
 }
 
@@ -1058,6 +1087,7 @@ static bool SetDrawState(D3D_RenderData *data, const SDL_RenderCommand *cmd)
     if (texture) {
         UpdateTextureScaleMode(data, cmd->data.draw.texture_scale_mode, 0);
         UpdateTextureAddressMode(data, cmd->data.draw.texture_address_mode_u, cmd->data.draw.texture_address_mode_v, 0);
+        UpdateTextureBorderColor(data, cmd->data.draw.texture_border_color, 0);
 
 #ifdef SDL_HAVE_YUV
         D3D_TextureData *texturedata = (D3D_TextureData *)texture->internal;
@@ -1066,6 +1096,8 @@ static bool SetDrawState(D3D_RenderData *data, const SDL_RenderCommand *cmd)
             UpdateTextureScaleMode(data, cmd->data.draw.texture_scale_mode, 2);
             UpdateTextureAddressMode(data, cmd->data.draw.texture_address_mode_u, cmd->data.draw.texture_address_mode_v, 1);
             UpdateTextureAddressMode(data, cmd->data.draw.texture_address_mode_u, cmd->data.draw.texture_address_mode_v, 2);
+            UpdateTextureBorderColor(data, cmd->data.draw.texture_border_color, 1);
+            UpdateTextureBorderColor(data, cmd->data.draw.texture_border_color, 2);
         }
 #endif // SDL_HAVE_YUV
     }

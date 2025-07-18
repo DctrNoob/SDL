@@ -2650,6 +2650,7 @@ static bool VULKAN_CreateTexture(SDL_Renderer *renderer, SDL_Texture *texture, S
         samplerCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
         samplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
         samplerCreateInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        samplerCreateInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
         samplerCreateInfo.mipLodBias = 0.0f;
         samplerCreateInfo.anisotropyEnable = VK_FALSE;
         samplerCreateInfo.maxAnisotropy = 1.0f;
@@ -3707,9 +3708,9 @@ static bool VULKAN_SetDrawState(SDL_Renderer *renderer, const SDL_RenderCommand 
     return true;
 }
 
-static VkSampler VULKAN_GetSampler(VULKAN_RenderData *data, SDL_ScaleMode scale_mode, SDL_TextureAddressMode address_u, SDL_TextureAddressMode address_v)
+static VkSampler VULKAN_GetSampler(VULKAN_RenderData *data, SDL_ScaleMode scale_mode, SDL_TextureAddressMode address_u, SDL_TextureAddressMode address_v, SDL_TextureBorderColor border_color)
 {
-    Uint32 key = RENDER_SAMPLER_HASHKEY(scale_mode, address_u, address_v, 0);
+    Uint32 key = RENDER_SAMPLER_HASHKEY(scale_mode, address_u, address_v, border_color);
     SDL_assert(key < SDL_arraysize(data->samplers));
     if (!data->samplers[key]) {
         VkSamplerCreateInfo samplerCreateInfo = { 0 };
@@ -3735,6 +3736,48 @@ static VkSampler VULKAN_GetSampler(VULKAN_RenderData *data, SDL_ScaleMode scale_
             SDL_SetError("Unknown scale mode: %d", scale_mode);
             return VK_NULL_HANDLE;
         }
+        switch (address_u) {
+        case SDL_TEXTURE_ADDRESS_CLAMP:
+            samplerCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+            break;
+        case SDL_TEXTURE_ADDRESS_WRAP:
+            samplerCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+            break;
+        case SDL_TEXTURE_ADDRESS_BORDER:
+            samplerCreateInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+            break;
+        default:
+            SDL_SetError("Unknown texture address mode: %d", address_u);
+            return VK_NULL_HANDLE;
+        }
+        switch (address_v) {
+        case SDL_TEXTURE_ADDRESS_CLAMP:
+            samplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+            break;
+        case SDL_TEXTURE_ADDRESS_WRAP:
+            samplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+            break;
+        case SDL_TEXTURE_ADDRESS_BORDER:
+            samplerCreateInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+            break;
+        default:
+            SDL_SetError("Unknown texture address mode: %d", address_v);
+            return VK_NULL_HANDLE;
+        }
+        switch (border_color) {
+        case SDL_TEXTURE_BORDER_COLOR_OPAQUE_BLACK:
+            samplerCreateInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
+            break;
+        case SDL_TEXTURE_BORDER_COLOR_OPAQUE_WHITE:
+            samplerCreateInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+            break;
+        case SDL_TEXTURE_BORDER_COLOR_TRANSPARENT_BLACK:
+            samplerCreateInfo.borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+            break;
+        default:
+            SDL_SetError("Unknown texture border color: %d", border_color);
+            return VK_NULL_HANDLE;
+        }
         VkResult result = vkCreateSampler(data->device, &samplerCreateInfo, NULL, &data->samplers[key]);
         if (result != VK_SUCCESS) {
             SET_ERROR_CODE("vkCreateSampler()", result);
@@ -3756,7 +3799,7 @@ static bool VULKAN_SetCopyState(SDL_Renderer *renderer, const SDL_RenderCommand 
 
     VULKAN_SetupShaderConstants(renderer, cmd, texture, &constants);
 
-    textureSampler = VULKAN_GetSampler(rendererData, cmd->data.draw.texture_scale_mode, cmd->data.draw.texture_address_mode_u, cmd->data.draw.texture_address_mode_v);
+    textureSampler = VULKAN_GetSampler(rendererData, cmd->data.draw.texture_scale_mode, cmd->data.draw.texture_address_mode_u, cmd->data.draw.texture_address_mode_v, cmd->data.draw.texture_border_color);
     if (textureSampler == VK_NULL_HANDLE) {
         return false;
     }
