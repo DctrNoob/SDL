@@ -102,6 +102,7 @@ static void loop(void)
         if (event.type == SDL_EVENT_KEY_DOWN) {
             if (event.key.key == SDLK_B) {
                 border_color = (border_color + 1) % border_color_count;
+                SDL_Log("Texture border color: %d", border_color);
             } else if (event.key.key == SDLK_U) {
                 u_mode = (u_mode + 1) % texture_address_count;
                 SDL_Log("Texture address mode for U: %d", u_mode);
@@ -140,7 +141,6 @@ int main(int argc, char *argv[])
 
     /* Initialize test framework */
     state = SDLTest_CommonCreateState(argv, SDL_INIT_VIDEO);
-    state->renderdriver = "vulkan";
     state->verbose = VERBOSE_RENDER;
     if (!state) {
         return 1;
