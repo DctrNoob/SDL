@@ -60,9 +60,9 @@ Draw(DrawState *s)
     SDL_SetRenderDrawColorFloat(s->renderer, 0.5f, 1.0f, 0.5f, 1.0f);
     SDL_RenderClear(s->renderer);
 
-    SDL_SetRenderDrawBlendMode(s->renderer, SDL_BLENDMODE_BLEND);
     SDL_SetRenderTextureAddressMode(s->renderer, u_mode, v_mode);
     SDL_SetRenderTextureBorderColor(s->renderer, border_color);
+    SDL_SetTextureBlendMode(s->texture, SDL_BLENDMODE_BLEND);
 
     vertices[0].position.x = 0.0f;
     vertices[0].position.y = 0.0f;
@@ -141,6 +141,7 @@ int main(int argc, char *argv[])
 
     /* Initialize test framework */
     state = SDLTest_CommonCreateState(argv, SDL_INIT_VIDEO);
+    state->renderdriver = "software";
     state->verbose = VERBOSE_RENDER;
     if (!state) {
         return 1;
