@@ -11,9 +11,9 @@
 */
 /* Simple program: Display a texture with changeable texture address modes and border colors */
 
-#include <SDL3/SDL_test_common.h>
-#include <SDL3/SDL_main.h>
 #include "testutils.h"
+#include <SDL3/SDL_main.h>
+#include <SDL3/SDL_test_common.h>
 
 #ifdef SDL_PLATFORM_EMSCRIPTEN
 #include <emscripten/emscripten.h>
@@ -78,12 +78,12 @@ Draw(DrawState *s)
     vertices[3].color = color;
     vertices[0].tex_coord.x = -1.0f;
     vertices[0].tex_coord.y = -1.0f;
-    vertices[1].tex_coord.x =  2.0f;
+    vertices[1].tex_coord.x = 2.0f;
     vertices[1].tex_coord.y = -1.0f;
     vertices[2].tex_coord.x = -1.0f;
-    vertices[2].tex_coord.y =  2.0f;
-    vertices[3].tex_coord.x =  2.0f;
-    vertices[3].tex_coord.y =  2.0f;
+    vertices[2].tex_coord.y = 2.0f;
+    vertices[3].tex_coord.x = 2.0f;
+    vertices[3].tex_coord.y = 2.0f;
     SDL_RenderGeometry(s->renderer, s->texture, vertices, 4, indices, 6);
 
     SDL_RenderPresent(s->renderer);
@@ -141,7 +141,6 @@ int main(int argc, char *argv[])
 
     /* Initialize test framework */
     state = SDLTest_CommonCreateState(argv, SDL_INIT_VIDEO);
-    state->renderdriver = "software";
     state->verbose = VERBOSE_RENDER;
     if (!state) {
         return 1;
